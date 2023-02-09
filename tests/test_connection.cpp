@@ -1185,6 +1185,122 @@ void Test_netloopback_throughput()
 	SteamNetworkingSockets()->CloseConnection( hClient, 0, nullptr, false );
 }
 
+enum Forks {
+	CreateConnectName,
+	CreateP2P,
+	TypeSteamNetworkingIPAddr
+};
+
+static void ForkCreateConnectName(SteamNetworkingIPAddr* _bindServerAddress, SteamNetworkingIPAddr* _connectToServerAddress, const char * name)
+{
+	SteamNetworkingUtils()->SetGlobalCallback_SteamNetConnectionStatusChanged( OnSteamNetConnectionStatusChanged );
+
+	CloseConnections();
+
+	ISteamNetworkingSockets *pSteamSocketNetworking = SteamNetworkingSockets();
+
+	// Command line options:
+	// -connect:ip -- don't create a server, just try to connect to the given ip
+	// -serveronly -- don't create a client only create a server and wait for connection
+	SteamNetworkingIPAddr bindServerAddress;
+	bindServerAddress.Clear();
+	bindServerAddress.m_port = PORT_SERVER;
+
+	SteamNetworkingIPAddr connectToServerAddress;
+	connectToServerAddress.SetIPv4( 0x7f000001, PORT_SERVER );
+
+	//const char *s_pszConnectParm = "-connect:";
+	//for ( int i = 0; i < CommandLine()->ParmCount(); ++i )
+	//{
+	//	if ( V_strnicmp( CommandLine()->GetParm( i ), s_pszConnectParm, V_strlen( s_pszConnectParm ) ) == 0 )
+	//	{
+	//		bClientOnly = true;
+	//		connection_adr.SetFromString( CommandLine()->GetParm( i ) + V_strlen( s_pszConnectParm ) );
+	//		break;
+	//	}
+	//}
+
+	// Initiate connection
+	g_hSteamListenSocket = pSteamSocketNetworking->CreateListenSocketIP( bindServerAddress, 0, nullptr );
+	g_peerClient.m_hSteamNetConnection = pSteamSocketNetworking->ConnectByIPAddress( connectToServerAddress, 0, nullptr );
+	pSteamSocketNetworking->SetConnectionName( g_peerClient.m_hSteamNetConnection, "Client" );
+
+	g_peerClient.SetConnectionConfig();
+
+//	// Send a few random message, before we get connected, just to test that case
+//	g_peerClient.SendRandomMessage( true );
+//	g_peerClient.SendRandomMessage( true );
+//	g_peerClient.SendRandomMessage( true );
+
+	// Wait for connection to complete
+	while ( !g_peerClient.m_bIsConnected || !g_peerServer.m_bIsConnected )
+		TEST_PumpCallbacks();
+	/*static HSteamListenSocket g_hSteamListenSocket = k_HSteamListenSocket_Invalid;
+	static HSteamNetConnection m_hSteamNetConnection = k_HSteamNetConnection_Invalid;
+	SteamNetworkingIPAddr bindServerAddress1;
+	bindServerAddress1.Clear();
+	bindServerAddress1.m_port = PORT_SERVER;
+	//SteamNetworkingIPAddr connectToServerAddress;
+	//connectToServerAddress.SetIPv4( 0x7f000001, PORT_SERVER );
+
+	
+	//debug
+	(*bindServerAddress).Clear();
+	(*bindServerAddress).m_port = 22;
+
+	//buffer
+	char* buf;
+	buf = (char*)malloc(bindServerAddress->k_cchMaxString*sizeof(char));
+
+	//target lines
+	printf("Making socket object\n");
+	ISteamNetworkingSockets *pSteamSocketNetworking = SteamNetworkingSockets();
+	printf("Creating ListenSocket with IP\n");
+	//std::cout << typeid(bindServerAddress).name() << '\n';
+	(*bindServerAddress).ToString(buf, (*bindServerAddress).k_cchMaxString, true);
+	printf("Address: %s\n", buf);
+	//std::cout << buf << '\n';
+	g_hSteamListenSocket = pSteamSocketNetworking->CreateListenSocketIP( bindServerAddress1, 0, nullptr ); //TODO options would be nice
+	printf("Connecting by IP address\n");
+	m_hSteamNetConnection = pSteamSocketNetworking->ConnectByIPAddress( *connectToServerAddress, 0, nullptr ); //TODO same ^
+	printf("Set connection name\n");
+	pSteamSocketNetworking->SetConnectionName( m_hSteamNetConnection, name);
+	printf("Test Finished\n");
+	*/
+}
+
+static void ForkCreateP2P(SteamNetworkingConfigValue_t opt, int g_nVirtualPortLocal){
+	//SteamNetworkingConfigValue_t opt;
+	//int g_nVirtualPortLocal = 0;
+	//opt.SetInt32( k_ESteamNetworkingConfig_SymmetricConnect, 1 ); // << Note we set symmetric mode on the listen socket
+	
+	//target lines
+	HSteamListenSocket g_hListenSock;
+	g_hListenSock = SteamNetworkingSockets()->CreateListenSocketP2P( g_nVirtualPortLocal, 1, &opt );
+}
+
+///generators
+SteamNetworkingIPAddr* steamnetworkingipaddr(const char * ip){
+	static SteamNetworkingIPAddr snia;
+	snia.Clear();
+	//every single value needs to be parameter tuned
+	//ipv4 or ipv6
+	//probably use parsestring
+	printf("Address: %s\n", ip);
+	snia.ParseString(ip);
+	//std::cout << std::hex << static_cast<unsigned int>(static_cast<unsigned char>((*snia.m_ipv6)));
+	//printf("%d", snia.m_ipv4.m_ip);
+	char* buf;
+	buf = (char*)malloc(snia.k_cchMaxString*sizeof(char));
+	(snia).ToString(buf, snia.k_cchMaxString, true);
+	printf("Address: %s\n", buf);
+	return &snia;
+}
+
+void Test_fuzz(){
+	
+}
+
 int main( int argc, const char **argv  )
 {
 	typedef void (*FnTest)(void);
@@ -1203,7 +1319,7 @@ int main( int argc, const char **argv  )
 		TEST(lane_quick_queueanddrain),
 		TEST(lane_quick_priority_and_background)
 	};
-
+	/*
 	struct Suite_t {
 		const char *m_pszName;
 		std::vector< Test_t > m_vecTests;
@@ -1241,6 +1357,19 @@ print_available_tests_and_exit:
 			goto print_usage;
 
 		bool bFound = false;
+		if (!strcasecmp(argv[i], "fuzz")){
+			int testenum;
+			testenum = atoi(argv[1]);
+			//printf("%s", std::to_string(testenum).c_str());
+			switch(testenum){
+				case Forks::CreateConnectName: // ./command testenum SteamNetworkingIPAddr SteamNetworkingIPAddr string
+					ForkCreateConnectName(steamnetworkingipaddr(argv[2]), steamnetworkingipaddr(argv[3]), argv[4]);
+					break;
+				default:
+					break;
+			}
+			return 0;
+		}
 		for ( const Test_t &t: tests )
 		{
 			if ( !strcasecmp( argv[i], t.m_pszName ) )
@@ -1266,10 +1395,10 @@ print_available_tests_and_exit:
 			goto print_available_tests_and_exit;
 		}
 	}
-
+	*/
 	// Initialize library
 	TEST_Init( nullptr );
-
+	/*
 	for ( const Test_t &t: vecTestsToRun )
 	{
 		TEST_Printf( "--------------------------------------\n");
@@ -1286,7 +1415,18 @@ print_available_tests_and_exit:
 		TEST_Printf( "\n" );
 		TEST_Printf( "Test '%s' completed OK\n\n", t.m_pszName );
 	}
+	*/
 
+	int testenum;
+	testenum = atoi(argv[1]);
+	//printf("%s", std::to_string(testenum).c_str());
+	switch(testenum){
+		case Forks::CreateConnectName: // ./command testenum SteamNetworkingIPAddr SteamNetworkingIPAddr string
+			ForkCreateConnectName(steamnetworkingipaddr(argv[2]), steamnetworkingipaddr(argv[3]), argv[4]);
+			break;
+		default:
+			break;
+	}
 	// Shutdown library
 	TEST_Kill();	
 	return 0;

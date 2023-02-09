@@ -41,3 +41,19 @@ if( BUILD_EXAMPLES )
 	add_sanitizers(example_chat)
 
 endif()
+
+if( BUILD_EXAMPLES )
+
+	#
+	# Really simple client/server chat
+	#
+
+	add_executable(
+		wrapper
+		wrapper.cpp)
+	set_target_common_gns_properties( wrapper )
+	target_link_libraries(wrapper GameNetworkingSockets::static)
+
+	add_sanitizers(wrapper)
+
+endif()
