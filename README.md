@@ -1,4 +1,6 @@
-# GameNetworkingSockets [![Build Status](https://github.com/ValveSoftware/GameNetworkingSockets/workflows/CI/badge.svg)](https://github.com/ValveSoftware/GameNetworkingSockets/actions)
+# Repo is not currently functional, cannot private due to Github policy. Will not delete because I intend to return to subject.
+
+## GameNetworkingSockets [![Build Status](https://github.com/ValveSoftware/GameNetworkingSockets/workflows/CI/badge.svg)](https://github.com/ValveSoftware/GameNetworkingSockets/actions)
 
 GameNetworkingSockets is a basic transport layer for games.  The features are:
 
